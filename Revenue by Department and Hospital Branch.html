@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue by Department and Hospital Branch</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body, html {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #chart {
+            width: 80%;
+            height: 500px;
+            margin-top: 20px; /* Add margin to center the chart vertically */
+        }
+
+        .tooltip {
+            opacity: 0;
+            position: absolute;
+            text-align: center;
+            width: 120px;
+            height: 28px;
+            padding: 2px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .chart-title {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-title">Revenue by Department and Hospital Branch</div>
+    <div id="chart"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const margin = { top: 80, right: 20, bottom: 150, left: 70 },
+                width = 960 - margin.left - margin.right,
+                height = 500 - margin.top - margin.bottom;
+
+            const svg = d3.select("#chart").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scaleBand()
+                .range([0, width])
+                .padding(0.1);
+            const y = d3.scaleLinear()
+                .range([height, 0]);
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip");
+
+            d3.csv("https://raw.githubusercontent.com/CharishYadavali/dv-final-project/main/Hospital%20Visits%20Revenue.csv").then(data => {
+                const sumRevenue = d3.rollups(data, v => d3.sum(v, d => d.Revenue),
+                    d => d.Department, d => d["Hospital Branch"]).map(([department, branches]) => ({
+                        department,
+                        branches: branches.map(([branch, revenue]) => ({branch, revenue}))
+                    })).flatMap(d => d.branches.map(b => ({
+                        department: d.department,
+                        branch: b.branch,
+                        revenue: b.revenue
+                    })));
+
+                x.domain(sumRevenue.map(d => `${d.department} - ${d.branch}`));
+                y.domain([0, d3.max(sumRevenue, d => d.revenue)]);
+
+                svg.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x))
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-2.5em")
+                    .attr("dy", "-0.5em")
+                    .attr("transform", "rotate(-90)");
+
+                svg.append("g")
+                    .call(d3.axisLeft(y));
+
+                const bars = svg.selectAll(".bar")
+                    .data(sumRevenue)
+                    .enter().append("rect")
+                    .attr("class", "bar")
+                    .attr("x", d => x(`${d.department} - ${d.branch}`))
+                    .attr("width", x.bandwidth())
+                    .attr("y", height)
+                    .attr("height", 0)
+                    .style("fill", "#69b3a2");
+
+                bars.transition()
+                    .ease(d3.easeElastic)
+                    .duration(800)
+                    .delay((d, i) => i * 100)
+                    .attr("y", d => y(d.revenue))
+                    .attr("height", d => height - y(d.revenue))
+                    .style("fill", "steelblue");
+
+                bars.on("mouseover", function(event, d) {
+                    d3.select(this).transition().duration(300).style("fill", "orange");
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html(`Revenue: $${d.revenue}<br/>Department: ${d.department}<br/>Branch: ${d.branch}`)
+                        .style("left", `${event.pageX + 5}px`)
+                        .style("top", `${event.pageY - 28}px`);
+                })
+                .on("mouseout", function(d) {
+                    d3.select(this).transition().duration(300).style("fill", "steelblue");
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

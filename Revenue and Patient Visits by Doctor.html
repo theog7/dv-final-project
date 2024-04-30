@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue and Patient Visits by Doctor</title>
+    <style>
+        body, html {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #chart {
+            width: 960px;
+            height: 600px;
+            position: relative;
+        }
+        #chartTitle {
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            background: white;
+            border: 1px solid #d3d3d3;
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0.9;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <div id="chartTitle">Revenue and Patient Visits by Doctor</div>
+    <div id="chart"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const width = 960, height = 600;
+            const svg = d3.select("#chart").append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .style("display", "block")
+                .style("margin", "auto"); // Center the SVG in the div
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute")
+                .style("background", "white")
+                .style("border", "1px solid #ccc")
+                .style("padding", "10px")
+                .style("border-radius", "5px")
+                .style("pointer-events", "none");
+
+            // Fetch data directly from the GitHub URL
+            d3.csv("https://raw.githubusercontent.com/CharishYadavali/dv-final-project/main/Hospital%20Visits%20Revenue.csv").then(data => {
+                const aggregatedData = Array.from(d3.rollup(data, v => ({
+                    visits: v.length,
+                    revenue: d3.sum(v, d => +d.Revenue)
+                }), d => d.Doctor));
+
+                const visitScale = d3.scaleSqrt()
+                    .domain([0, d3.max(aggregatedData, d => d[1].visits)])
+                    .range([10, 40]);
+
+                const revenueScale = d3.scaleLinear()
+                    .domain([0, d3.max(aggregatedData, d => d[1].revenue)])
+                    .range(["lightblue", "darkblue"]);
+
+                const simulation = d3.forceSimulation(aggregatedData)
+                    .force("x", d3.forceX(width / 2).strength(0.05))
+                    .force("y", d3.forceY(height / 2).strength(0.05))
+                    .force("collide", d3.forceCollide(d => visitScale(d[1].visits) + 2))
+                    .on("tick", ticked);
+
+                function ticked() {
+                    const bubbles = svg.selectAll("circle")
+                        .data(aggregatedData, d => d[0])
+                        .join("circle")
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y)
+                        .attr("r", d => visitScale(d[1].visits))
+                        .style("fill", d => revenueScale(d[1].revenue))
+                        .on("mouseover", (event, d) => {
+                            tooltip.transition().duration(200).style("opacity", 1);
+                            tooltip.html(`Doctor: ${d[0]}
+                                <br>Visits: ${d[1].visits}<br>Revenue: $${d[1].revenue}`)
+                                .style("left", `${event.pageX}px`)
+                                .style("top", `${event.pageY - 28}px`);
+                        })
+                        .on("mouseout", () => {
+                            tooltip.transition().duration(500).style("opacity", 0);
+                        });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

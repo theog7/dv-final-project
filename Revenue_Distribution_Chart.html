@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue Distribution Chart</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            background: #f4f4f9;
+        }
+        canvas {
+            width: 90vw; /* 90% of the viewport width */
+            height: 90vh; /* 90% of the viewport height */
+            max-width: 1200px; /* Maximum width */
+            max-height: 700px; /* Maximum height */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.25); /* Optional shadow for depth */
+            background: white; /* Background color for canvas */
+            border-radius: 8px; /* Rounded corners for the canvas */
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <canvas id="revenueChart"></canvas>
+    <script>
+        const data = {
+            labels: ['Central', 'East', 'South'],
+            datasets: [
+                {
+                    label: '2018',
+                    data: [13855400, 7467300, 4759200],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: '2019',
+                    data: [9889675, 14787255, 5490870],
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Total',
+                    data: [23745075, 22254555, 10250070],
+                    backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+
+        const config = {
+            type: 'bar',
+            data: data,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Annual and Total Revenue Distribution by Hospital Branch'
+                    }
+                }
+            }
+        };
+
+        const revenueChart = new Chart(
+            document.getElementById('revenueChart'),
+            config
+        );
+    </script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Visits by Risk Profile</title>
+    <style>
+        body, html {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #chart-title {
+            margin: 20px;
+            text-align: center;
+        }
+        #selectBranch {
+            margin: 20px;
+            text-align: center;
+        }
+        #chartContainer {
+            position: relative;
+            width: 500px;
+            height: 700px;
+        }
+        #chart {
+            width: 100%;
+            height: 500px;
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+        .chart-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            width: auto;
+            padding: 8px;
+            font-size: 14px;
+            background: white;
+            border: 1px solid #666;
+            color: #333;
+            border-radius: 8px;
+            pointer-events: none; /* Let mouse events pass through */
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .legend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        .legend rect {
+            stroke: #fff;
+            fill-opacity: 0.8;
+            stroke-width: 2;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <div id="chartContainer">
+        <div class="chart-title">Patient Visits by Risk Profile</div>
+        <div id="selectBranch">
+            <label for="branchSelector">Select Hospital Branch:</label>
+            <select id="branchSelector"></select>
+        </div>
+        <div id="chart"></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const width = 500, height = 500, radius = 250;
+            const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+            const svg = d3.select("#chart").append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g")
+                .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+            const arc = d3.arc()
+                .innerRadius(100)
+                .outerRadius(radius - 10);
+
+            const arcHover = d3.arc()
+                .innerRadius(100)
+                .outerRadius(radius);
+
+            const pie = d3.pie()
+                .sort(null)
+                .value(d => d.visits);
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+    
+            d3.csv("https://raw.githubusercontent.com/CharishYadavali/dv-final-project/main/Hospital%20Visits%20Revenue.csv").then(data => {
+                const profiles = Array.from(new Set(data.map(d => d["Patient Risk Profile"])));
+                color.domain(profiles);
+
+                const select = document.getElementById("branchSelector");
+                data.map(d => d["Hospital Branch"])
+                    .filter((v, i, a) => a.indexOf(v) === i)
+                    .forEach(branch => {
+                        let option = document.createElement("option");
+                        option.value = option.textContent = branch;
+                        select.appendChild(option);
+                    });
+
+                select.addEventListener('change', function() {
+                    const selectedData = data.filter(d => d["Hospital Branch"] === this.value);
+                    updateChart(selectedData);
+                });
+
+                updateChart(data.filter(d => d["Hospital Branch"] === data[0]["Hospital Branch"]));
+
+                function updateChart(data) {
+                    const summarizedData = d3.rollups(data, v => v.length, d => d["Patient Risk Profile"])
+                        .map(([profile, visits]) => ({ profile, visits }));
+
+                    const pieData = pie(summarizedData);
+
+                    const paths = svg.selectAll("path")
+                        .data(pieData, d => d.data.profile);
+
+                    paths.enter().append("path")
+                        .attr("fill", d => color(d.data.profile))
+                        .merge(paths)
+                        .attr("d", arc)
+                        .on("mouseover", function(event, d) {
+                            d3.select(this).transition()
+                                .duration(200)
+                                .attr("d", arcHover);
+                            tooltip.style("opacity", 1)
+                                   .html(`Profile: ${d.data.profile}<br>Visits: ${d.data.visits}`)
+                                   .style("left", `${event.pageX}px`)
+                                   .style("top", `${event.pageY - 28}px`);
+                        })
+                        .on("mouseout", function(d) {
+                            d3.select(this).transition()
+                                .duration(200)
+                                .attr("d", arc);
+                            tooltip.style("opacity", 0);
+                        });
+
+                    paths.exit().remove();
+
+                    addLegend(profiles);
+                }
+            });
+
+            function addLegend(profiles) {
+                const legend = svg.selectAll(".legend")
+                    .data([null]) // Dummy data for single append
+                    .enter().append("g")
+                    .attr("class", "legend")
+                    .attr("transform", "translate(-220, -250)");
+
+                profiles.forEach((profile, i) => {
+                    const legendRow = legend.append("g")
+                        .attr("transform", `translate(0, ${i * 20})`);
+
+                    legendRow.append("rect")
+                        .attr("width", 18)
+                        .attr("height", 18)
+                        .attr("fill", color(profile));
+
+                    legendRow.append("text")
+                        .attr("x", 24)
+                        .attr("y", 9)
+                        .attr("dy", ".35em")
+                        .text(profile);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
